@@ -25,12 +25,31 @@ class CheeseListingResourceTest extends CustomApiTestCase
         ]);
         $this->assertResponseStatusCodeSame(401);
 
-        $this->createUserAndLogIn($client, 'cheeseplease@example.com', 'foo');
+        $authenticatedUser = $this->createUserAndLogIn($client, 'cheeseplease@example.com', 'foo');
+        $otherUser = $this->createUser('otheruser@example.com', 'foo');
+
+        $cheesyData = [
+            'title' => 'Mystery cheese.... kinda green',
+            'description' => 'What mysteries does it hold?',
+            'price' => 5000
+        ];
 
         $client->request('POST', '/api/cheeses', [
-            'json' => [],
+            'json' => $cheesyData,
         ]);
-        $this->assertResponseStatusCodeSame(400);
+
+        $this->assertResponseStatusCodeSame(201);
+
+
+        $client->request('POST', '/api/cheeses', [
+            'json' => $cheesyData + ['owner' => '/api/users/'.$otherUser->getId()],
+        ]);
+        $this->assertResponseStatusCodeSame(400, 'not passing the correct owner');
+
+        $client->request('POST', '/api/cheeses', [
+            'json' => $cheesyData + ['owner' => '/api/users/'.$authenticatedUser->getId()],
+        ]);
+        $this->assertResponseStatusCodeSame(201);
     }
 
     public function testUpdateCheeseListing()
@@ -59,6 +78,59 @@ class CheeseListingResourceTest extends CustomApiTestCase
             'json' => ['title' => 'updated']
         ]);
         $this->assertResponseStatusCodeSame(200);
+    }
+
+    public function testGetCheeseListingCollection()
+    {
+        $client = self::createClient();
+        $user = $this->createUser('cheeseplease@example.com', 'foo');
+
+        $cheeseListing1 = new CheeseListing('cheese1');
+        $cheeseListing1->setOwner($user);
+        $cheeseListing1->setPrice(1000);
+        $cheeseListing1->setDescription('cheese');
+
+        $cheeseListing2 = new CheeseListing('cheese2');
+        $cheeseListing2->setOwner($user);
+        $cheeseListing2->setPrice(1000);
+        $cheeseListing2->setDescription('cheese');
+        $cheeseListing2->setIsPublished(true);
+
+
+        $cheeseListing3 = new CheeseListing('cheese2');
+        $cheeseListing3->setOwner($user);
+        $cheeseListing3->setPrice(1000);
+        $cheeseListing3->setDescription('cheese');
+        $cheeseListing3->setIsPublished(true);
+
+        $em = $this->getEntityManager();
+        $em->persist($cheeseListing1);
+        $em->persist($cheeseListing2);
+        $em->persist($cheeseListing3);
+        $em->flush();
+
+        $client->request('GET', '/api/cheeses');
+        $this->assertJsonContains(['hydra:totalItems' => 2]);
+    }
+
+    public function testGetCheeseListingItem()
+    {
+        $client = self::createClient();
+        $user = $this->createUser('cheeseplease@example.com', 'foo');
+
+        $cheeseListing1 = new CheeseListing('cheese1');
+        $cheeseListing1->setOwner($user);
+        $cheeseListing1->setPrice(1000);
+        $cheeseListing1->setDescription('cheese');
+        $cheeseListing1->setIsPublished(false);
+
+
+        $em = $this->getEntityManager();
+        $em->persist($cheeseListing1);
+        $em->flush();
+
+        $client->request('GET', '/api/cheeses/'.$cheeseListing1->getId());
+        $this->assertResponseStatusCodeSame(404);
     }
 }
 

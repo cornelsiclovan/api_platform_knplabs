@@ -56,7 +56,7 @@ class User implements UserInterface
 
     /**
      * @ORM\Column(type="json")
-     * @Groups({"user:write"})
+     * @Groups({"admin:write"})
      */
     private $roles = [];
 
@@ -75,7 +75,7 @@ class User implements UserInterface
 
     /**
      * @ORM\Column(type="string", length=255, unique=true)
-     * @Groups({"user:read", "user:write", "cheese_listing:item:get", "cheese_listing:write"})
+     * @Groups({"user:read", "user:write", "cheese:item:get"})
      * @Assert\NotBlank()
      */
     private $username;
@@ -89,7 +89,7 @@ class User implements UserInterface
 
     /**
      * @ORM\Column(type="string", length=50, nullable=true)
-     * @Groups({"user:read", "user:write"})
+     * @Groups({"admin:read", "owner:read", "user:write"})
      */
     private $phoneNumber;
 
